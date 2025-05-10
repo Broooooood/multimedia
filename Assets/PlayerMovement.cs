@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections.Generic;
 using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
@@ -25,10 +24,13 @@ public class PlayerMovement : MonoBehaviour
     public float slideDuration = 0.5f;
     private bool sliding;
 
-
     [Header("Slopes")]
     public float maxSlopeAngle;
     private RaycastHit slopeHit;
+
+    [Header("Slope Acceleration")]
+    public float slopeAcceleration = 30f;
+    public float maxSlopeSpeed = 20f;
 
     [Header("Keybinds")]
     public KeyCode jumpKey = KeyCode.Space;
@@ -58,12 +60,12 @@ public class PlayerMovement : MonoBehaviour
         air
     }
 
-    // Variáveis de controlo de gravidade
-    public float gravityScale = 2.5f;  // Gravidade personalizada
-    private float originalGravity = -9.81f; // Gravidade original do Unity (padrão)
+    [Header("Custom Gravity")]
+    public float gravityScale = 2.5f;
+    private float originalGravity = -9.81f;
 
-    private int jumpCount = 0; // Contador de saltos (1 para o salto normal, 1 para o duplo salto)
-    private const int maxJumps = 2; // Máximo de saltos (1 salto normal + 1 duplo salto)
+    private int jumpCount = 0;
+    private const int maxJumps = 2;
 
     void Start()
     {
@@ -75,7 +77,7 @@ public class PlayerMovement : MonoBehaviour
 
         startYScale = transform.localScale.y;
 
-        // Definir a gravidade global no início
+        // Definir a gravidade personalizada
         Physics.gravity = new Vector3(0, originalGravity * gravityScale, 0);
     }
 
@@ -84,121 +86,149 @@ public class PlayerMovement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
 
-        // Salto
+        // Saltar
         if (Input.GetKey(jumpKey) && readyToJump && (grounded || jumpCount < maxJumps))
         {
             readyToJump = false;
-
             Jump();
 
-            if (!grounded)
-            {
-                jumpCount++; // Incrementa o contador de saltos se estiver no ar
-            }
+            if (!grounded) jumpCount++;
 
             Invoke(nameof(ResetJump), jumpCoolDown);
         }
 
-        // Agachar e deslisar
+        // Agachar ou deslizar
         if (Input.GetKeyDown(crouchKey))
+        {
+            if (state == MovementState.sprinting && grounded)
             {
-                if (state == MovementState.sprinting && grounded)
-                {
-                    StartSlide();
-                }
-                else
-                {
-                    // Agachar normal
-                    transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
-                    rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
-                }
+                StartSlide();
             }
-            else if (Input.GetKeyUp(crouchKey) && !sliding)
+            else
             {
-                transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+                transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+                rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             }
+        }
+        else if (Input.GetKeyUp(crouchKey) && !sliding)
+        {
+            transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+        }
     }
 
     private void StateHandler()
     {
-        if (Input.GetKey(crouchKey))
+        if (Input.GetKey(crouchKey) && !sliding) // Verificar se o jogador está a agachar e não está a deslizar
         {
-            state = MovementState.crouching;
-            moveSpeed = crouchSpeed;
+            if (grounded && Input.GetKey(sprintKey)) // Se o jogador está no chão e a correr
+            {
+                state = MovementState.sliding; // Definir estado para deslizar
+                moveSpeed = sprintSpeed; // Manter a velocidade de corrida durante o deslize
+                Debug.Log("State: Sliding");
+                StartSlide(); // Iniciar o deslize
+            }
+            else if (grounded)
+            {
+                state = MovementState.crouching;
+                moveSpeed = crouchSpeed; // Reduzir a velocidade para agachar
+                Debug.Log("State: Crouching");
+            }
         }
         else if (grounded && Input.GetKey(sprintKey))
         {
             state = MovementState.sprinting;
             moveSpeed = sprintSpeed;
+            Debug.Log("State: Sprinting");
         }
         else if (grounded)
         {
             state = MovementState.walking;
             moveSpeed = walkSpeed;
+            Debug.Log("State: Walking");
         }
-        else
+        else if (!grounded)
         {
             state = MovementState.air;
-        }
-
-        if (sliding)
-        {
-            state = MovementState.sliding;
-            moveSpeed = sprintSpeed; // Mantém a velocidade
+            Debug.Log("State: In Air");
         }
     }
 
-    // Update é chamado uma vez por frame
     private void Update()
     {
-        // Verificar se está no chão
         grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
-        Debug.Log("Grounded: " + grounded);
-
         MyInput();
         SpeedControl();
         StateHandler();
 
-        // Aderência
+        // Aderência ao chão
         if (grounded)
         {
             rb.linearDamping = groundDrag;
-            jumpCount = 0; // Reseta o contador de saltos ao tocar o chão
+            jumpCount = 0;
         }
         else
         {
             rb.linearDamping = 0;
         }
 
-        // Ajuste da gravidade no ar
         if (!grounded)
         {
             AdjustGravityInAir();
         }
+
+        // Debug da velocidade horizontal
+        Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Debug.Log("Velocidade horizontal: " + flatVel.magnitude.ToString("F2") + " u/s");
     }
 
     private void FixedUpdate()
     {
-        MovePlayer();
+        MovePlayer();  // Movimento normal do jogador
+
+        // Verificar se o jogador está a deslizar e se está num declive
+        if (sliding && OnSlope())
+        {
+            // Aumentar a velocidade de deslize enquanto desce um declive
+            Vector3 slideDirection = GetSlopeMoveDirection();
+            float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
+            float slopeMultiplier = Mathf.Clamp(slopeAngle / maxSlopeAngle, 0.5f, 2f); // Multiplicador com base no ângulo do declive
+
+            // Ajustar a força do deslize com base no ângulo do declive
+            float boostedForce = slideForce * slopeMultiplier;
+
+            // Aplicar a força de deslizar na direção do declive
+            rb.AddForce(slideDirection * boostedForce, ForceMode.Force);  // Usar ForceMode.Force para evitar "explodir" a velocidade
+        }
+        else if (!OnSlope() && sliding)
+        {
+            // Se o jogador não estiver num declive, parar o deslize
+            StopSlide();
+        }
     }
 
     public void MovePlayer()
     {
         moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-        // No chão
         if (grounded)
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
         }
-        else if (!grounded)
+        else
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
 
-        if (OnSlope())
+        if (OnSlope() && rb.linearVelocity.y <= 0.1f)
         {
-            rb.AddForce(GetSlopeMoveDirection() * moveSpeed * 20f, ForceMode.Force);
+            Vector3 slopeDirection = GetSlopeMoveDirection();
+
+            // Aceleração extra ao descer um declive
+            if (rb.linearVelocity.magnitude < maxSlopeSpeed)
+            {
+                rb.AddForce(slopeDirection * slopeAcceleration, ForceMode.Force);
+                Debug.Log("A descer declive - velocidade atual: " + rb.linearVelocity.magnitude.ToString("F2"));
+            }
         }
     }
 
@@ -206,9 +236,17 @@ public class PlayerMovement : MonoBehaviour
     {
         Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
 
-        if (flatVel.magnitude > moveSpeed)
+        float currentMaxSpeed = moveSpeed;
+
+        // Permitir mais velocidade ao deslizar numa rampa
+        if (sliding && OnSlope())
         {
-            Vector3 limitedVel = flatVel.normalized * moveSpeed;
+            currentMaxSpeed += 10f; 
+        }
+
+        if (flatVel.magnitude > currentMaxSpeed)
+        {
+            Vector3 limitedVel = flatVel.normalized * currentMaxSpeed;
             rb.linearVelocity = new Vector3(limitedVel.x, rb.linearVelocity.y, limitedVel.z);
         }
     }
@@ -216,7 +254,6 @@ public class PlayerMovement : MonoBehaviour
     private void Jump()
     {
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
 
@@ -225,20 +262,17 @@ public class PlayerMovement : MonoBehaviour
         readyToJump = true;
     }
 
-private void AdjustGravityInAir()
-{
-    // Gravidade mais leve ao cair
-    if (rb.linearVelocity.y < 0)
+    private void AdjustGravityInAir()
     {
-        rb.AddForce(Vector3.up * originalGravity * gravityScale * 1.0f, ForceMode.Acceleration); // Mais suave ao cair
+        if (rb.linearVelocity.y < 0)
+        {
+            rb.AddForce(Vector3.up * originalGravity * gravityScale * 1.0f, ForceMode.Acceleration);
+        }
+        else if (rb.linearVelocity.y > 0)
+        {
+            rb.AddForce(Vector3.up * originalGravity * gravityScale * 0.3f, ForceMode.Acceleration);
+        }
     }
-    // Gravidade ainda mais leve ao subir
-    else if (rb.linearVelocity.y > 0)
-    {
-        rb.AddForce(Vector3.up * originalGravity * gravityScale * 0.3f, ForceMode.Acceleration); // Subida mais flutuante
-    }
-}
-
 
     private bool OnSlope()
     {
@@ -257,16 +291,47 @@ private void AdjustGravityInAir()
 
     private void StartSlide()
     {
-        sliding = true;
-        transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
-        rb.AddForce(orientation.forward * slideForce, ForceMode.Impulse);
+        // Verificar se o jogador está no chão e se está a correr
+        if (grounded && Input.GetKey(sprintKey) && !sliding)
+        {
+            sliding = true;
 
-        Invoke(nameof(StopSlide), slideDuration);
+            // Reduzir a altura do jogador para o agachamento durante o deslize
+            transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+
+            // Caso esteja num declive, deslizar na direção do declive
+            if (OnSlope() && verticalInput > 0)
+            {
+                Vector3 slideDirection = GetSlopeMoveDirection();
+
+                // Obter o ângulo do declive
+                float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
+
+                // Multiplicador para a força de deslize com base no ângulo do declive
+                float slopeMultiplier = Mathf.Clamp(slopeAngle / maxSlopeAngle, 0.5f, 2f);
+
+                // Ajustar a força de deslize com base no declive
+                float boostedForce = slideForce * slopeMultiplier;
+
+                // Aplicar a força de deslize na direção do declive
+                rb.AddForce(slideDirection * boostedForce, ForceMode.Force);
+            }
+            else
+            {
+                // Se não estiver num declive, deslizar na direção em que o jogador está a olhar (plano)
+                Vector3 slideDirection = orientation.forward;
+
+                // Aplicar a força de deslize
+                rb.AddForce(slideDirection * slideForce, ForceMode.Force);
+            }
+        }
     }
 
     private void StopSlide()
     {
+        // Parar o deslize e restaurar a altura original do jogador
         sliding = false;
         transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
     }
+
 }
