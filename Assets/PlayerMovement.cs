@@ -20,16 +20,21 @@ public class PlayerMovement : MonoBehaviour
     public float startYScale;
 
     [Header("Sliding")]
-    public float slideForce = 400f;
-    public float slideDuration = 0.5f;
+    public float slideForce = 50f;
+    public float slideDuration = 0.03f;
     private bool sliding;
+
+    [Header("Slide Conditions")]
+    public float minSlideSpeed = 20f;  
+    public float slideDecay = 10f;  
+    public float uphillSlideDecay = 15f; 
 
     [Header("Slopes")]
     public float maxSlopeAngle;
     private RaycastHit slopeHit;
 
     [Header("Slope Acceleration")]
-    public float slopeAcceleration = 30f;
+    public float slopeAcceleration = 20f;
     public float maxSlopeSpeed = 20f;
 
     [Header("Keybinds")]
@@ -67,6 +72,7 @@ public class PlayerMovement : MonoBehaviour
     private int jumpCount = 0;
     private const int maxJumps = 2;
 
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -77,7 +83,7 @@ public class PlayerMovement : MonoBehaviour
 
         startYScale = transform.localScale.y;
 
-        // Definir a gravidade personalizada
+        // Definir a gravidade 
         Physics.gravity = new Vector3(0, originalGravity * gravityScale, 0);
     }
 
@@ -100,7 +106,7 @@ public class PlayerMovement : MonoBehaviour
         // Agachar ou deslizar
         if (Input.GetKeyDown(crouchKey))
         {
-            if (state == MovementState.sprinting && grounded)
+            if (state == MovementState.sprinting && grounded && rb.linearVelocity.magnitude > minSlideSpeed) // Verifica se está a correr e com velocidade suficiente
             {
                 StartSlide();
             }
@@ -110,17 +116,19 @@ public class PlayerMovement : MonoBehaviour
                 rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             }
         }
-        else if (Input.GetKeyUp(crouchKey) && !sliding)
+        else if (Input.GetKeyUp(crouchKey))
         {
+            StopSlide();  // Garante que o slide é interrompido
             transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
         }
+
     }
 
     private void StateHandler()
     {
-        if (Input.GetKey(crouchKey) && !sliding) // Verificar se o jogador está a agachar e não está a deslizar
+        if (Input.GetKey(crouchKey) && sliding) // Verificar se o jogador está a agachar e não está a deslizar
         {
-            if (grounded && Input.GetKey(sprintKey)) // Se o jogador está no chão e a correr
+            if (grounded && Input.GetKey(sprintKey) && rb.linearVelocity.magnitude > minSlideSpeed) // Se o jogador está no chão, a correr e com velocidade suficiente
             {
                 state = MovementState.sliding; // Definir estado para deslizar
                 moveSpeed = sprintSpeed; // Manter a velocidade de corrida durante o deslize
@@ -134,7 +142,7 @@ public class PlayerMovement : MonoBehaviour
                 Debug.Log("State: Crouching");
             }
         }
-        else if (grounded && Input.GetKey(sprintKey))
+        else if (grounded && Input.GetKey(sprintKey) && !Input.GetKey(crouchKey))
         {
             state = MovementState.sprinting;
             moveSpeed = sprintSpeed;
@@ -183,28 +191,39 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        MovePlayer();  // Movimento normal do jogador
+        MovePlayer();
 
-        // Verificar se o jogador está a deslizar e se está num declive
-        if (sliding && OnSlope())
+        if (sliding)
         {
-            // Aumentar a velocidade de deslize enquanto desce um declive
-            Vector3 slideDirection = GetSlopeMoveDirection();
-            float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
-            float slopeMultiplier = Mathf.Clamp(slopeAngle / maxSlopeAngle, 0.5f, 2f); // Multiplicador com base no ângulo do declive
+            Vector3 slideDirection = OnSlope() ? GetSlopeMoveDirection() : moveDirection;
 
-            // Ajustar a força do deslize com base no ângulo do declive
-            float boostedForce = slideForce * slopeMultiplier;
+            if (OnSlope())
+            {
+                float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
 
-            // Aplicar a força de deslizar na direção do declive
-            rb.AddForce(slideDirection * boostedForce, ForceMode.Force);  // Usar ForceMode.Force para evitar "explodir" a velocidade
-        }
-        else if (!OnSlope() && sliding)
-        {
-            // Se o jogador não estiver num declive, parar o deslize
-            StopSlide();
+                // Se estiver a subir (slopeDirection contra a normal do declive)
+                if (Vector3.Dot(slideDirection, slopeHit.normal) > 0)
+                {
+                    // Desacelera ao subir
+                    rb.linearVelocity *= uphillSlideDecay;
+                }
+            }
+            else
+            {
+                // Desacelera em plano
+                rb.linearVelocity *= slideDecay;
+            }
+
+            // Parar slide se velocidade for muito baixa
+            Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+            if (flatVel.magnitude < 1f)
+            {
+                StopSlide();
+            }
         }
     }
+
+
 
     public void MovePlayer()
     {
@@ -290,42 +309,28 @@ public class PlayerMovement : MonoBehaviour
     }
 
     private void StartSlide()
+{
+    Vector3 flatVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+    // Verifica se está no chão, a correr e com velocidade suficiente
+    if (grounded && Input.GetKey(sprintKey) && !sliding && flatVelocity.magnitude >= minSlideSpeed)
     {
-        // Verificar se o jogador está no chão e se está a correr
-        if (grounded && Input.GetKey(sprintKey) && !sliding)
+        sliding = true;
+        transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+
+        Vector3 slideDirection = OnSlope() && verticalInput > 0 ? GetSlopeMoveDirection() : orientation.forward;
+
+        float slideBoost = slideForce;
+        if (OnSlope())
         {
-            sliding = true;
-
-            // Reduzir a altura do jogador para o agachamento durante o deslize
-            transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
-
-            // Caso esteja num declive, deslizar na direção do declive
-            if (OnSlope() && verticalInput > 0)
-            {
-                Vector3 slideDirection = GetSlopeMoveDirection();
-
-                // Obter o ângulo do declive
-                float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
-
-                // Multiplicador para a força de deslize com base no ângulo do declive
-                float slopeMultiplier = Mathf.Clamp(slopeAngle / maxSlopeAngle, 0.5f, 2f);
-
-                // Ajustar a força de deslize com base no declive
-                float boostedForce = slideForce * slopeMultiplier;
-
-                // Aplicar a força de deslize na direção do declive
-                rb.AddForce(slideDirection * boostedForce, ForceMode.Force);
-            }
-            else
-            {
-                // Se não estiver num declive, deslizar na direção em que o jogador está a olhar (plano)
-                Vector3 slideDirection = orientation.forward;
-
-                // Aplicar a força de deslize
-                rb.AddForce(slideDirection * slideForce, ForceMode.Force);
-            }
+            float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
+            float slopeMultiplier = Mathf.Clamp(slopeAngle / maxSlopeAngle, 0.5f, 2f);
+            slideBoost *= slopeMultiplier;
         }
+
+        rb.AddForce(slideDirection * slideBoost, ForceMode.Force);
     }
+}
 
     private void StopSlide()
     {
@@ -333,5 +338,4 @@ public class PlayerMovement : MonoBehaviour
         sliding = false;
         transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
     }
-
 }
