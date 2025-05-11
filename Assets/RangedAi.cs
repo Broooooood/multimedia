@@ -4,17 +4,17 @@ public class RangedAi : EnemyBase
 {
     [Header("Ranged Settings")]
     public Transform shootPoint;  // Ponto de origem do disparo
-    public GameObject laserEffectPrefab;  // Prefab do efeito visual do laser
+    public GameObject laserEffectPrefab;  
 
     [Header("Laser Settings")]
-    public float laserRange = 10f;  // Distância do laser
+    public float laserRange = 10f;  
     public LayerMask targetLayer;  // Camada do jogador, para garantir que o laser só atinja o jogador
 
     protected override void Awake()
     {
         base.Awake();
-        maxHealth = 120;  // Vida do inimigo Ranged
-        moveSpeed = 3f;   // Velocidade do inimigo Ranged
+        maxHealth = 120;  
+        moveSpeed = 3f;   
     }
 
     public override void Attack()

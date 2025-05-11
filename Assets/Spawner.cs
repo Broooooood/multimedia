@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI; // Importando para usar o Legacy UI Text
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -8,89 +8,106 @@ public class Spawner : MonoBehaviour
     [System.Serializable]
     public class EnemyWaveEntry
     {
-        public GameObject enemyPrefab; // Prefab do inimigo
-        public int count = 1; // Número de inimigos a spawnar na onda
+        public GameObject enemyPrefab;
+        public int count = 1;
     }
 
     [Header("Spawn Settings")]
-    public List<EnemyWaveEntry> waveEnemies; // Lista de inimigos para cada onda
-    public Transform[] spawnPoints; // Pontos onde os inimigos podem aparecer
-    public float timeBetweenWaves = 5f; // Tempo entre ondas
+    public List<EnemyWaveEntry> waveEnemies;
+    public Transform[] spawnPoints;
+    public float timeBetweenWaves = 5f;
 
     [Header("Difficulty Scaling Settings")]
-    public int waveNumber = 1; // Número da onda atual
-    public float enemyHealthMultiplier = 1.2f; // Multiplicador de vida dos inimigos
-    public float enemyDamageMultiplier = 1.1f; // Multiplicador de dano dos inimigos
-    public int countIncreasePerWave = 1; // Quantidade de inimigos a mais por onda
+    public int waveNumber = 1;
+    public int enemyHealthMultiplier = 1;
+    public int enemyDamageMultiplier = 1;
+    public int countIncreasePerWave = 1;
 
     [Header("UI")]
-    public Text waveText; // Referência para o texto da UI que exibe a onda atual
+    public Text waveText;
+
+    // Expose uma variável pública para o jogador no Editor
+    public GameObject player; // Esta será a referência ao jogador no Editor
+
+    private List<GameObject> activeEnemies = new List<GameObject>();
 
     void Start()
     {
-        StartCoroutine(SpawnWaveLoop()); // Inicia o ciclo de spawn das ondas
+        UpdateWaveText();
+        StartCoroutine(SpawnWaveLoop());
     }
 
     IEnumerator SpawnWaveLoop()
     {
         while (true)
         {
-            yield return new WaitForSeconds(timeBetweenWaves); // Espera o tempo entre ondas
+            while (activeEnemies.Count > 0)
+            {
+                yield return null;
+            }
 
-            Debug.Log($"Wave {waveNumber} started!"); // Mostra no log quando a onda começa
-            SpawnWave(); // Chama a função para spawnar os inimigos
-            IncreaseDifficulty(); // Aumenta a dificuldade para a próxima onda
-            UpdateWaveText(); // Atualiza o texto da UI com a onda atual
+            yield return new WaitForSeconds(timeBetweenWaves);
+
+            Debug.Log($"Wave {waveNumber} started!");
+            SpawnWave();
+            IncreaseDifficulty();
+            UpdateWaveText();
         }
     }
 
     void SpawnWave()
     {
-        // Para cada tipo de inimigo na lista da onda
+        // Aqui, agora usamos o jogador arrastado no editor diretamente
+        if (player == null)
+        {
+            Debug.LogError("Jogador não foi atribuído no Spawner! Por favor, arraste o jogador no Editor.");
+            return;
+        }
+
         foreach (var entry in waveEnemies)
         {
-            // Cria o número de inimigos especificado para o tipo
             for (int i = 0; i < entry.count; i++)
             {
-                Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)]; // Ponto de spawn aleatório
-                GameObject enemy = Instantiate(entry.enemyPrefab, spawnPoint.position, Quaternion.identity); // Instancia o inimigo
+                Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+                GameObject enemy = Instantiate(entry.enemyPrefab, spawnPoint.position, Quaternion.identity);
 
-                // Obtém o componente EnemyBase do inimigo para ajustar a vida e o dano
+                activeEnemies.Add(enemy);
+
                 EnemyBase stats = enemy.GetComponent<EnemyBase>();
                 if (stats != null)
                 {
-                    // Ajusta a vida máxima para ser um número inteiro, aplicando o multiplicador
-                    stats.maxHealth = Mathf.RoundToInt(stats.maxHealth * enemyHealthMultiplier);
-                    stats.TakeDamage(0); // Resetando a saúde do inimigo com base no valor multiplicado
-
-                    // Multiplica o dano do inimigo
-                    stats.damage = Mathf.RoundToInt(stats.damage * enemyDamageMultiplier); // Cast para int
+                    stats.spawner = this;
+                    stats.target = player.transform; // Agora usamos a referência do jogador arrastado no Editor
+                    stats.maxHealth *= enemyHealthMultiplier;
+                    stats.damage *= enemyDamageMultiplier;
+                    stats.TakeDamage(0); // Atualiza a saúde inicial
                 }
             }
         }
     }
 
+    public void OnEnemyDeath(GameObject enemy)
+    {
+        activeEnemies.Remove(enemy);
+    }
+
     void IncreaseDifficulty()
     {
-        waveNumber++; // Aumenta o número da onda
-
-        // Aumenta a quantidade de inimigos por tipo
+        waveNumber++;
         foreach (var entry in waveEnemies)
         {
             entry.count += countIncreasePerWave;
         }
 
-        // Escala a vida e o dano dos inimigos para aumentar a dificuldade
-        enemyHealthMultiplier += 0.1f;
-        enemyDamageMultiplier += 0.05f;
+        enemyHealthMultiplier += 1;  
+        enemyDamageMultiplier += 1;
     }
 
-    // Método para atualizar o texto da UI
     void UpdateWaveText()
     {
         if (waveText != null)
         {
-            waveText.text = $"Wave: {waveNumber}"; // Exibe o número da onda no texto
+            waveText.text = $"Wave: {waveNumber}";
         }
     }
 }

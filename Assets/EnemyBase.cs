@@ -4,6 +4,8 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent))]
 public class EnemyBase : MonoBehaviour
 {
+    public Spawner spawner;
+    
     [Header("Stats")]
     public int maxHealth = 100;
     public float moveSpeed = 3.5f;
@@ -52,6 +54,7 @@ public class EnemyBase : MonoBehaviour
 
     public virtual void Die()
     {
+        spawner?.OnEnemyDeath(gameObject);
         Destroy(gameObject);
     }
 
@@ -60,7 +63,6 @@ public class EnemyBase : MonoBehaviour
         Debug.Log("EnemyBase attack (genérico). Deve ser sobrescrito.");
     }
 
-    // Método público para acessar a saúde atual
     public int GetCurrentHealth()
     {
         return currentHealth;
