@@ -1,17 +1,49 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+
 public class PlayerHealth : MonoBehaviour
 {
     public int maxHealth = 100;
     private int currentHealth;
+    public int recover = 5;
 
-    public Text lifeText; // Referência ao componente Text do Canvas
+    public float timeToStartHealing = 3f;
+    public float healInterval = 1f;
+
+    private float healTimer = 0f;
+    private float idleTimer = 0f;
+    private bool isHealing = false;
+
+    public Text lifeText;
 
     void Start()
     {
         currentHealth = maxHealth;
         UpdateLifeText();
+    }
+
+    void Update()
+    {
+        if (currentHealth < maxHealth)
+        {
+            idleTimer += Time.deltaTime;
+
+            if (idleTimer >= timeToStartHealing)
+            {
+                isHealing = true;
+            }
+
+            if (isHealing)
+            {
+                healTimer += Time.deltaTime;
+                if (healTimer >= healInterval)
+                {
+                    Heal();
+                    healTimer = 0f;
+                }
+            }
+        }
     }
 
     public void TakeDamage(int amount)
@@ -20,15 +52,19 @@ public class PlayerHealth : MonoBehaviour
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         UpdateLifeText();
 
+        idleTimer = 0f;
+        healTimer = 0f;
+        isHealing = false;
+
         if (currentHealth <= 0)
         {
             Die();
         }
     }
 
-    public void Heal(int amount)
+    public void Heal()
     {
-        currentHealth += amount;
+        currentHealth += recover;
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         UpdateLifeText();
     }
@@ -44,11 +80,9 @@ public class PlayerHealth : MonoBehaviour
     void Die()
     {
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true; 
-        SceneManager.LoadScene("Morte"); 
+        Cursor.visible = true;
+        SceneManager.LoadScene("Morte");
         Debug.Log("Died");
         gameObject.SetActive(false);
     }
-
 }
-
