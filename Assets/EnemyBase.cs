@@ -5,7 +5,7 @@ using UnityEngine.AI;
 public class EnemyBase : MonoBehaviour
 {
     public Spawner spawner;
-    
+
     [Header("Stats")]
     public int maxHealth = 100;
     public float moveSpeed = 3.5f;
@@ -32,16 +32,20 @@ public class EnemyBase : MonoBehaviour
 
     protected virtual void Update()
     {
-        if (target)
+        if (target == null || agent == null)
+            return;
+
+        // Evita erro de SetDestination fora da NavMesh
+        if (agent.enabled && IsOnNavMesh())
         {
             agent.SetDestination(target.position);
+        }
 
-            float distance = Vector3.Distance(transform.position, target.position);
-            if (distance <= attackRange && Time.time - lastAttackTime >= attackCooldown)
-            {
-                Attack();
-                lastAttackTime = Time.time;
-            }
+        float distance = Vector3.Distance(transform.position, target.position);
+        if (distance <= attackRange && Time.time - lastAttackTime >= attackCooldown)
+        {
+            Attack();
+            lastAttackTime = Time.time;
         }
     }
 
@@ -66,5 +70,12 @@ public class EnemyBase : MonoBehaviour
     public int GetCurrentHealth()
     {
         return currentHealth;
+    }
+
+    // 🔍 Verifica se o inimigo está numa área válida da NavMesh
+    protected bool IsOnNavMesh()
+    {
+        NavMeshHit hit;
+        return NavMesh.SamplePosition(transform.position, out hit, 1.0f, NavMesh.AllAreas);
     }
 }

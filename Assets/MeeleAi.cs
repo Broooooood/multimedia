@@ -37,17 +37,17 @@ public class MeeleAi : EnemyBase
         else
         {
             Debug.Log("Attak");
-            agent.enabled = false; // desativa o navmesh para não interferir com a física
+            agent.enabled = false; 
             rb.AddForce(direction * chargeForce, ForceMode.Impulse);
-            Invoke(nameof(ReenableNavMesh), 1.5f); // reativa após a investida
+            Invoke(nameof(ReenableNavMesh), 1.5f); 
         }
 
-        // Aplica dano (aqui simples, poderia ser por colisão também)
+        
         if (Vector3.Distance(transform.position, target.position) <= attackRange)
         {
             PlayerHealth playerHealth = target.GetComponent<PlayerHealth>();
             if (playerHealth != null)
-                playerHealth.TakeDamage(damage); // Conversão de dano para int
+                playerHealth.TakeDamage(damage);
         }
     }
 

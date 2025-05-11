@@ -1082,7 +1082,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
-  lifeText: {fileID: 0}
+  lifeText: {fileID: 1974183755}
 --- !u!114 &529496305
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1105,7 +1105,7 @@ MonoBehaviour:
   grappleCooldown: 0.5
   grappleFireSound: {fileID: 0}
   grappleRetractSound: {fileID: 0}
-  grappleParticles: {fileID: 0}
+  grappleParticles: {fileID: 1073950061}
 --- !u!120 &529496306
 LineRenderer:
   serializedVersion: 2
@@ -1238,7 +1238,7 @@ Transform:
   m_GameObject: {fileID: 637674090}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -5.19, y: -8.5, z: 131}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1451,7 +1451,7 @@ Transform:
   m_GameObject: {fileID: 954335252}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 206.1, y: -10.6, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1652,6 +1652,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pauseMenuUI: {fileID: 1665133132}
+--- !u!198 &1073950061 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 5397316038221488649, guid: 4e35892e4c5444340a0e2189311808e5, type: 3}
+  m_PrefabInstance: {fileID: 1756126187}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1114015895
 GameObject:
   m_ObjectHideFlags: 0
@@ -1762,17 +1767,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveEnemies:
   - enemyPrefab: {fileID: 4441280123580518563, guid: 39e5fa096b961534c8d4700430269b07, type: 3}
-    count: 0
+    count: 1
   - enemyPrefab: {fileID: 1309102911327349272, guid: 818735817b78f4589abd5e3e33023c0a, type: 3}
-    count: 0
+    count: 1
   spawnPoints:
   - {fileID: 2027052095}
+  - {fileID: 637674091}
+  - {fileID: 954335253}
+  - {fileID: 1189929178}
   timeBetweenWaves: 5
   waveNumber: 1
   enemyHealthMultiplier: 1
   enemyDamageMultiplier: 1
   countIncreasePerWave: 1
   waveText: {fileID: 1639261772}
+  player: {fileID: 529496301}
 --- !u!4 &1166773839
 Transform:
   m_ObjectHideFlags: 0
@@ -1817,7 +1826,7 @@ Transform:
   m_GameObject: {fileID: 1189929177}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -179.49, y: 26.9, z: -315.7}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 49.18728, y: 8.963164, z: 13.560792}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2312,7 +2321,7 @@ MonoBehaviour:
   m_OverrideTileSize: 0
   m_TileSize: 256
   m_OverrideVoxelSize: 0
-  m_VoxelSize: 0.16666667
+  m_VoxelSize: 0.6666667
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 23800000, guid: f913509f404fa08d1a63ad5cc0f4838f, type: 2}
   m_BuildHeightMesh: 0

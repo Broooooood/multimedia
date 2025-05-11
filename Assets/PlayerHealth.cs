@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-
+using UnityEngine.SceneManagement;
 public class PlayerHealth : MonoBehaviour
 {
     public int maxHealth = 100;
@@ -43,6 +43,9 @@ public class PlayerHealth : MonoBehaviour
 
     void Die()
     {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true; 
+        SceneManager.LoadScene("Morte"); 
         Debug.Log("Died");
         gameObject.SetActive(false);
     }
