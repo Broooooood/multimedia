@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 2655386676240368895}
   - component: {fileID: -3338844075476549230}
   - component: {fileID: 2789752159068303360}
+  - component: {fileID: 7418007742132479816}
   m_Layer: 0
   m_Name: Meele
   m_TagString: Untagged
@@ -106,7 +107,7 @@ NavMeshAgent:
   m_AutoBraking: 1
   m_AutoRepath: 1
   m_Height: 2
-  m_BaseOffset: 1.2
+  m_BaseOffset: 1.1
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
 --- !u!114 &2655386676240368895
@@ -161,6 +162,18 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.53
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7418007742132479816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4441280123580518563}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b3d2e6ca72a43500baacb1f879311be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8764495394817669282
 GameObject:
   m_ObjectHideFlags: 0
